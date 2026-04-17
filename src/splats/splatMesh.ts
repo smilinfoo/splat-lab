@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createSplatMaterial } from "./splatMaterial";
 
 export function createSplatMesh(data: any) {
   const geometry = new THREE.BufferGeometry();
@@ -13,10 +14,7 @@ export function createSplatMesh(data: any) {
     new THREE.Float32BufferAttribute(data.colors, 3)
   );
 
-  const material = new THREE.PointsMaterial({
-    size: 0.05,
-    vertexColors: true,
-  });
+  const material = createSplatMaterial();
 
   const points = new THREE.Points(geometry, material);
 
