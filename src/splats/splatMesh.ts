@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { createSplatMaterial } from "./splatMaterial";
 
-export function createSplatMesh(data: any) {
+export function createSplatMesh(data: any, material: THREE.ShaderMaterial) {
   const geometry = new THREE.BufferGeometry();
 
   geometry.setAttribute(
@@ -14,7 +14,15 @@ export function createSplatMesh(data: any) {
     new THREE.Float32BufferAttribute(data.colors, 3)
   );
 
-  const material = createSplatMaterial();
+  geometry.setAttribute(
+    "scale",
+    new THREE.Float32BufferAttribute(data.scales, 1)
+  );
+  
+  geometry.setAttribute(
+    "opacity",
+    new THREE.Float32BufferAttribute(data.opacities, 1)
+  );
 
   const points = new THREE.Points(geometry, material);
 

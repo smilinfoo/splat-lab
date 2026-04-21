@@ -8,11 +8,11 @@ export function createCamera() {
     0.1,
     1000
   );
-
   camera.position.set(0, 0, 3);
 
   const renderer = document.querySelector("canvas");
-  const controls = new OrbitControls(camera, document.body);
+  console.log(renderer)
+  const controls = new OrbitControls(camera, renderer);
   controls.enableDamping = true;
 
   return camera;
