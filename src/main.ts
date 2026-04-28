@@ -2,14 +2,12 @@ import './style.css'
 import { createRenderer } from "./core/renderer";
 import { createScene } from "./core/scene";
 import { createCamera } from "./core/camera";
-import { loadSplats } from "./splats/loader";
 import { createSplatMesh } from "./splats/splatMesh";
 import { createSplatMaterial } from "./splats/splatMaterial";
 
-import { loadPLY } from "./splats/loader";
+import { loadBinaryPly } from "./splats/loader";
 
 import { createUI } from "./ui/ui";
-import { state } from "./ui/state";
 import { applyState } from "./ui/bindings";
 
 async function init() {
@@ -21,10 +19,8 @@ async function init() {
   const material = createSplatMaterial();
 
   // TEMP: load sample data
-  //const splatData = await loadSplats("/src/data/sample.json");
-  const splatData = await loadPLY("/data/sample.ply");
-
-  const splatMesh = createSplatMesh(splatData, material);
+  const binaryDataNew = await loadBinaryPly("/splats/point_cloud.ply");
+  const splatMesh = createSplatMesh(binaryDataNew, material);
   scene.add(splatMesh);
 
   const onChange = () => {
