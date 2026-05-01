@@ -3,6 +3,7 @@ type SplatData = {
   positions: Float32Array;
   colors: Float32Array;
   scales: Float32Array;
+  rotations: Float32Array;
   opacities: Float32Array;
 };
 
@@ -39,8 +40,9 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
   const view = new DataView(buffer, header.dataOffset);
   const positions = new Float32Array(header.vertexCount * 3);
   const colors = new Float32Array(header.vertexCount * 3);
-  const scales = new Float32Array(header.vertexCount);
+  const scales = new Float32Array(header.vertexCount * 3);
   const opacities = new Float32Array(header.vertexCount);
+  const rotations = new Float32Array(header.vertexCount * 4);
 
   const propertyIndex = (name: string) =>
     header.properties.findIndex((property) => property.name === name);
@@ -60,11 +62,13 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
   const greenIdx = propertyIndex("green");
   const blueIdx = propertyIndex("blue");
   const opacityIdx = propertyIndex("opacity");
-  const scaleIndices = [
-    propertyIndex("scale_0"),
-    propertyIndex("scale_1"),
-    propertyIndex("scale_2"),
-  ].filter((index) => index >= 0);
+  const scale0Idx = propertyIndex("scale_0");
+  const scale1Idx = propertyIndex("scale_1");
+  const scale2Idx = propertyIndex("scale_2");
+  const rotation0Idx = propertyIndex("rot_0");
+  const rotation1Idx = propertyIndex("rot_1");
+  const rotation2Idx = propertyIndex("rot_2");
+  const rotation3Idx = propertyIndex("rot_3");
 
   for (let i = 0; i < header.vertexCount; i++) {
     const baseOffset = i * stride;
@@ -102,21 +106,20 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
       colors[i * 3 + 2] = normalizeColorComponent(readProp(blueIdx));
     }
 
-    if (scaleIndices.length > 0) {
-      let logScaleSum = 0;
-      for (const scaleIndex of scaleIndices) {
-        logScaleSum += toFiniteNumber(readProp(scaleIndex), 0);
-      }
-      scales[i] = Math.exp(logScaleSum / scaleIndices.length);
-    } else {
-      scales[i] = 1;
-    }
+    const s0 = readProp(scale0Idx) ?? 0.05;
+    const s1 = readProp(scale1Idx) ?? 0.05;
+    const s2 = readProp(scale2Idx) ?? 0.05;
+    scales[i * 2 + 0] = Math.exp(s0); // often stored in log-space
+    scales[i * 2 + 1] = Math.exp(s1);    
+    scales[i * 2 + 2] = Math.exp(s2);  
+    rotations[i * 4 + 0] = toFiniteNumber(readProp(rotation0Idx), 0);
+    rotations[i * 4 + 1] = toFiniteNumber(readProp(rotation1Idx), 0);
+    rotations[i * 4 + 2] = toFiniteNumber(readProp(rotation2Idx), 0);
+    rotations[i * 4 + 3] = toFiniteNumber(readProp(rotation3Idx), 1);
 
     const rawOpacity = readProp(opacityIdx);
     opacities[i] = rawOpacity === undefined ? 1 : sigmoid(toFiniteNumber(rawOpacity, 0));
 
-    scales[i] = 0.01;
-    opacities[i]= 1;
   }
 
   return {
@@ -124,6 +127,7 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
     colors,
     scales,
     opacities,
+    rotations
   };
 }
 

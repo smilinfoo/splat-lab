@@ -16,7 +16,12 @@ export function createSplatMesh(data: any, material: THREE.ShaderMaterial) {
 
   geometry.setAttribute(
     "scale",
-    new THREE.Float32BufferAttribute(data.scales, 1)
+    new THREE.Float32BufferAttribute(data.scales, 3)
+  );
+
+  geometry.setAttribute(
+    "rotation",
+    new THREE.Float32BufferAttribute(data.rotations, 4)
   );
   
   geometry.setAttribute(
