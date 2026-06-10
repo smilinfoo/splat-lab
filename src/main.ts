@@ -20,22 +20,29 @@ async function init() {
 
   // TEMP: load sample data
   const data = await loadBinaryPly("/splats/point_cloud.ply");
-
   console.log("scale sample:", data.scales.slice(0, 20));
+
+
 
   let min = Infinity;
   let max = -Infinity;
-  
   for (let i = 0; i < data.scales.length; i++) {
     const v = data.scales[i];
     if (v < min) min = v;
     if (v > max) max = v;
   }
-  
   console.log("scale range:", min, max);
+
+
 
   const splatMesh = createSplatMesh(data, material);
   scene.add(splatMesh);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key >= "0" && e.key <= "5") {
+      material.uniforms.u_debug_mode.value = Number(e.key);
+    }
+  });
 
   const onChange = () => {
     applyState(material);

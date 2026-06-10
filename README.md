@@ -1,3 +1,9 @@
+Mode 1: No gradient
+Mode 2: Scale
+Mode 3: Rot
+Mode 4: R
+Mode 5: Opacity
+
 Day 1
 Basic Three.js scene
 Camera controls

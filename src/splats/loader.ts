@@ -31,6 +31,8 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
   const header = parseBinaryPlyHeader(buffer);
   const propertyOffsets = new Array<number>(header.properties.length);
 
+  console.log(header.properties.map((p) => p.name));
+
   let stride = 0;
   for (let i = 0; i < header.properties.length; i++) {
     propertyOffsets[i] = stride;
@@ -106,16 +108,58 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
       colors[i * 3 + 2] = normalizeColorComponent(readProp(blueIdx));
     }
 
+    if (i < 10) {
+      console.log(
+        "raw scales:",
+        readProp(scale0Idx),
+        readProp(scale1Idx),
+        readProp(scale2Idx)
+      );
+    }
     const s0 = readProp(scale0Idx) ?? 0.05;
     const s1 = readProp(scale1Idx) ?? 0.05;
     const s2 = readProp(scale2Idx) ?? 0.05;
-    scales[i * 2 + 0] = Math.exp(s0); // often stored in log-space
-    scales[i * 2 + 1] = Math.exp(s1);    
-    scales[i * 2 + 2] = Math.exp(s2);  
-    rotations[i * 4 + 0] = toFiniteNumber(readProp(rotation0Idx), 0);
-    rotations[i * 4 + 1] = toFiniteNumber(readProp(rotation1Idx), 0);
-    rotations[i * 4 + 2] = toFiniteNumber(readProp(rotation2Idx), 0);
-    rotations[i * 4 + 3] = toFiniteNumber(readProp(rotation3Idx), 1);
+    if (i < 10) {
+      console.log(
+        "retrieved scales:",
+        s0,
+        s1,
+        s2
+      );
+    }
+    scales[i * 3 + 0] = Math.exp(s0); // often stored in log-space
+    scales[i * 3 + 1] = Math.exp(s1);    
+    scales[i * 3 + 2] = Math.exp(s2);  
+    if (i < 10) {
+      console.log(
+        "post exp scales:",
+        scales[i * 3 + 0],
+        scales[i * 3 + 1],
+        scales[i * 3 + 2]
+      );
+    }    
+    let rX = toFiniteNumber(readProp(rotation1Idx), 0);
+    let rY = toFiniteNumber(readProp(rotation2Idx), 0);
+    let rZ = toFiniteNumber(readProp(rotation3Idx), 0);
+    let rW = toFiniteNumber(readProp(rotation0Idx), 1);
+    if(rW < 0) {
+      rX = -rX;
+      rY = -rY;
+      rZ = -rZ;
+      rW = -rW;
+    }
+    const rotQuatLen = Math.hypot(rX, rY, rZ, rW);
+    rotations[i * 4 + 0] = rotQuatLen > 0 ? rX / rotQuatLen : 0;
+    rotations[i * 4 + 1] = rotQuatLen > 0 ? rY / rotQuatLen : 0;
+    rotations[i * 4 + 2] = rotQuatLen > 0 ? rZ / rotQuatLen : 0;
+    rotations[i * 4 + 3] = rotQuatLen > 0 ? rW / rotQuatLen : 1;
+
+    if (rotations[i * 4 + 3] < 0) {
+      rotations[i * 4 + 0] = -rotations[i * 4 + 0];
+      rotations[i * 4 + 1] = -rotations[i * 4 + 1];
+      rotations[i * 4 + 2] = -rotations[i * 4 + 2];
+      rotations[i * 4 + 3] = -rotations[i * 4 + 3];
+    }
 
     const rawOpacity = readProp(opacityIdx);
     opacities[i] = rawOpacity === undefined ? 1 : sigmoid(toFiniteNumber(rawOpacity, 0));

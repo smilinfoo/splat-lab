@@ -19,9 +19,9 @@ export function createUI(onChange: () => void) {
 
   const sizeInput = document.createElement("input");
   sizeInput.type = "range";
-  sizeInput.min = "0.1";
-  sizeInput.max = "3";
-  sizeInput.step = "0.1";
+  sizeInput.min = "0.001";
+  sizeInput.max = "2";
+  sizeInput.step = "0.01";
   sizeInput.value = String(state.splatSize);
 
   sizeInput.oninput = (e) => {

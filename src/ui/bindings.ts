@@ -3,8 +3,8 @@ import { state } from "./state";
 
 export function applyState(material: THREE.ShaderMaterial) {
     console.log(state);
-    material.uniforms.uOpacity.value = state.opacity;
-    material.uniforms.uSize.value = state.splatSize;
+    material.uniforms.u_opacity_multiplier.value = state.opacity;
+    material.uniforms.u_size_multiplier.value = state.splatSize;
 
     material.blending = state.additive ? THREE.AdditiveBlending : THREE.NormalBlending;
 //   material.uniforms = material.uniforms || {};
