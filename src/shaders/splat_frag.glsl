@@ -10,6 +10,7 @@ varying vec3 v_color;        // Splat RGB values
 varying vec3 v_conic;        // Symmetrical inverse 2D covariance components
 varying vec3 v_scale;        // Only used for debugging purposes
 varying vec3 v_rot_debug;
+varying vec3 v_debug_color;
 
 void main() {
     // 1. EXTRACT INVERSE COVARIANCE PARAMETERS
@@ -32,8 +33,10 @@ void main() {
     // 4. COMBINE OPACITIES
     float alpha = v_opacity * exp(power);
 
+    vec3 outColor = v_color;
+    outColor = step(0.0, outColor);
     if (u_debug_mode == 1) {
-        gl_FragColor = vec4(v_color, 1.0);
+        gl_FragColor = vec4(outColor, 1.0);
         return;
     } 
     if (u_debug_mode == 2) {
@@ -59,10 +62,13 @@ void main() {
     }
 
     // Final visibility floor thresholding
-    if (alpha < (1.0 / 255.0)) {
-        discard;
-    }
+    // if (alpha < (1.0 / 255.0)) {
+    //     discard;
+    // }
 
     // 5. OUTPUT RENDER TARGET COLOUR
     gl_FragColor = vec4(v_color * alpha, alpha); // Premultiplied Alpha output
+    //gl_FragColor = vec4(v_debug_color, 1.0); // Premultiplied Alpha output
+    //vec3 tempColor = v_debug_color.rgb;
+    //gl_FragColor = vec4(tempColor, 1.0);
 }

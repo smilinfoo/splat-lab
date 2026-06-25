@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { createSplatMaterial } from "./splatMaterial_OLD";
 
 export function createSplatMesh(data: any, material: THREE.ShaderMaterial) {
 
@@ -7,7 +6,7 @@ export function createSplatMesh(data: any, material: THREE.ShaderMaterial) {
   const geometry = new THREE.InstancedBufferGeometry();
 
   // 2. Load the base 1x1 quad geometry
-  const perInstanceGeo = new THREE.PlaneGeometry(1, 1);
+  const perInstanceGeo = new THREE.PlaneGeometry(2, 2, 1, 1);//male vert pos 1,1
   
   // 3. Copy the base quad's standard attributes (index, position, uv) 
   geometry.index = perInstanceGeo.index;

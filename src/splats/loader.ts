@@ -21,6 +21,8 @@ type BinaryPlyHeader = {
 
 const SH_C0 = 0.28209479177387814;
 
+// Loads splat data
+// reorders quaternion to xyzw and normalized
 export async function loadBinaryPly(url: string): Promise<SplatData> {
   const res = await fetch(url);
   if (!res.ok) {
@@ -127,9 +129,9 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
         s2
       );
     }
-    scales[i * 3 + 0] = Math.exp(s0); // often stored in log-space
-    scales[i * 3 + 1] = Math.exp(s1);    
-    scales[i * 3 + 2] = Math.exp(s2);  
+    scales[i * 3 + 0] = s0; // go to log space in shader
+    scales[i * 3 + 1] = s1;    
+    scales[i * 3 + 2] = s2;  
     if (i < 10) {
       console.log(
         "post exp scales:",
@@ -153,13 +155,6 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
     rotations[i * 4 + 1] = rotQuatLen > 0 ? rY / rotQuatLen : 0;
     rotations[i * 4 + 2] = rotQuatLen > 0 ? rZ / rotQuatLen : 0;
     rotations[i * 4 + 3] = rotQuatLen > 0 ? rW / rotQuatLen : 1;
-
-    if (rotations[i * 4 + 3] < 0) {
-      rotations[i * 4 + 0] = -rotations[i * 4 + 0];
-      rotations[i * 4 + 1] = -rotations[i * 4 + 1];
-      rotations[i * 4 + 2] = -rotations[i * 4 + 2];
-      rotations[i * 4 + 3] = -rotations[i * 4 + 3];
-    }
 
     const rawOpacity = readProp(opacityIdx);
     opacities[i] = rawOpacity === undefined ? 1 : sigmoid(toFiniteNumber(rawOpacity, 0));
