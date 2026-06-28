@@ -23,6 +23,7 @@ varying vec3 v_conic;        // Holds the upper-triangle of the inverse 2D covar
 varying vec3 v_scale; //only needed to debug (could be moved to vert - but th4en debug would be set in multiple locations)
 varying vec3 v_rot_debug;
 varying vec3 v_debug_color;
+varying vec3 v_position;
 
 const float sqrt8 = sqrt(8.0);
 
@@ -185,11 +186,10 @@ void main() {
 
     // Compute dynamic pixel offset and transform to Normalized Device Coordinates (NDC)
     vec2 pixel_offset = quad_offset * max_radius;
-    vec2 ndc_offset = (pixel_offset / u_viewport) * 2.0 * 0.1;
 
     // Pass the exact sub-pixel offset to the fragment shader for evaluation
     v_pixel_offset = pixel_offset;
-    //v_color = position;
+
 
     vec3 cov2Dv = vec3(Sigma2D[0][0], Sigma2D[0][1], Sigma2D[1][1]);
     a = cov2Dv.x;
@@ -203,13 +203,11 @@ void main() {
     float eigenValue2 = traceOver2 - term2;
 
     if (eigenValue2 <= 0.0) return;
-
     vec2 eigenVector1 = normalize(vec2(b, eigenValue1 - a));
     vec2 eigenVector2 = vec2(eigenVector1.y, -eigenVector1.x);
 
     //viewpoer is in px
     //basisViewport is 1/vp.1, 1/vp.y;
-    vec3 adjustedPos = vec3(position.x, position.y, position.z);
     float splatScale = 1.0;
     float inverseFocalAdjustment = 1.0 / (projectionMatrix[0][0] * u_viewport.x * 0.5);
     inverseFocalAdjustment = 1.0;
@@ -217,20 +215,9 @@ void main() {
     vec2 basisVector1 = eigenVector1 * splatScale * min(sqrt8 * sqrt(eigenValue1), 1024.0); // viewport ?
     vec2 basisVector2 = eigenVector2 * splatScale * min(sqrt8 * sqrt(eigenValue2), 1024.0);
     vec2 ndcOffset = vec2(position.x * basisVector1 + position.y * basisVector2) * basisViewport * 2.0 * inverseFocalAdjustment;
-    vec2 testNDCOff = vec2(position.x * basisVector1 + position.y * basisVector2) * basisViewport * 2.0;
-    ndcOffset.x *= -1.0;
-    ndcOffset.y *= -1.0;
     vec4 quadPos = vec4(screen_center.xy + ndcOffset, screen_center.z, 1.0);
 
-    gl_Position = quadPos;    
-
-    float bar = 100.0;
-    float testRed = position.x;
-    float testGreen = position.y;
-    float testBlue = 0.3;
-    v_debug_color = vec3(testRed, testGreen,testBlue);
-    //v_color.r = step(-0.5, position.x); // Debug: visualize vertex positions in the quad
-    //v_color.b = 1.0;
-    // Output final clip space positions matching the expanded quad bounds
-    //gl_Position = vec4((screen_center.xy + ndc_offset), screen_center.z, 1.0);
+    gl_Position = quadPos; 
+    
+    v_position = position * sqrt8;
 }

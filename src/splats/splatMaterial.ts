@@ -11,7 +11,7 @@ export function createSplatMaterial() {
     vertexColors: true,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
-
+    
     uniforms: {
         u_size_multiplier: { value: 1.0 },
         u_opacity_multiplier: { value: 1.0 },

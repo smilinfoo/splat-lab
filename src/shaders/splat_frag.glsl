@@ -11,6 +11,7 @@ varying vec3 v_conic;        // Symmetrical inverse 2D covariance components
 varying vec3 v_scale;        // Only used for debugging purposes
 varying vec3 v_rot_debug;
 varying vec3 v_debug_color;
+varying vec3 v_position;
 
 void main() {
     // 1. EXTRACT INVERSE COVARIANCE PARAMETERS
@@ -24,11 +25,15 @@ void main() {
                         + 2.0 * b * v_pixel_offset.x * v_pixel_offset.y 
                         + c * v_pixel_offset.y * v_pixel_offset.y);
 
+    float A = dot(v_position, v_position);
+
     // 3. ALPHA OUTSIDE EVALUATION AREA
     // Optimization: Reject pixels where influence decays past 3 standard deviations
     if (power > 0.0) {
         discard;
     }
+
+    if (A > 8.0) discard;
 
     // 4. COMBINE OPACITIES
     float alpha = v_opacity * exp(power);
@@ -66,8 +71,12 @@ void main() {
     //     discard;
     // }
 
+    float opacity = exp(-0.5 * A) * v_opacity;
+
     // 5. OUTPUT RENDER TARGET COLOUR
     gl_FragColor = vec4(v_color * alpha, alpha); // Premultiplied Alpha output
+    gl_FragColor = vec4(v_color , 1.0); //test
+    gl_FragColor = vec4(v_color.rgb, opacity);
     //gl_FragColor = vec4(v_debug_color, 1.0); // Premultiplied Alpha output
     //vec3 tempColor = v_debug_color.rgb;
     //gl_FragColor = vec4(tempColor, 1.0);
