@@ -1,10 +1,11 @@
 
-type SplatData = {
+export type SplatData = {
   positions: Float32Array;
   colors: Float32Array;
   scales: Float32Array;
   rotations: Float32Array;
   opacities: Float32Array;
+  order: Float32Array;
 };
 
 type PlyProperty = {
@@ -47,6 +48,7 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
   const scales = new Float32Array(header.vertexCount * 3);
   const opacities = new Float32Array(header.vertexCount);
   const rotations = new Float32Array(header.vertexCount * 4);
+  const order = new Float32Array(header.vertexCount);
 
   const propertyIndex = (name: string) =>
     header.properties.findIndex((property) => property.name === name);
@@ -73,7 +75,7 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
   const rotation1Idx = propertyIndex("rot_1");
   const rotation2Idx = propertyIndex("rot_2");
   const rotation3Idx = propertyIndex("rot_3");
-
+  console.log(`verts ${header.vertexCount.toLocaleString()}`);
   for (let i = 0; i < header.vertexCount; i++) {
     const baseOffset = i * stride;
     const readProp = (index: number) => {
@@ -90,6 +92,7 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
       );
     };
 
+    order[i] = i;
     positions[i * 3 + 0] = toFiniteNumber(readProp(xIdx), 0);
     positions[i * 3 + 1] = toFiniteNumber(readProp(yIdx), 0);
     positions[i * 3 + 2] = toFiniteNumber(readProp(zIdx), 0);
@@ -112,11 +115,7 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
 
     if (i < 10) {
       console.log(
-        "raw scales:",
-        readProp(scale0Idx),
-        readProp(scale1Idx),
-        readProp(scale2Idx)
-      );
+        `rorder ${order[i]}`);
     }
     const s0 = readProp(scale0Idx) ?? 0.05;
     const s1 = readProp(scale1Idx) ?? 0.05;
@@ -166,7 +165,8 @@ export async function loadBinaryPly(url: string): Promise<SplatData> {
     colors,
     scales,
     opacities,
-    rotations
+    rotations,
+    order
   };
 }
 

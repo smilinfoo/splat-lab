@@ -6,6 +6,7 @@ attribute vec3 scale;        // Raw log-space scale vectors
 attribute vec4 rotation;     // Unconstrained quaternions (w, x, y, z)
 attribute vec4 opacity;      // Unconstrained alpha value (pre-sigmoid)
 //attribute vec3 color;        // Splat color
+attribute float order;        // Order of the splat in the data texture (used for indexing)
 
 // --- Uniforms ---
 // uniform mat4 modelViewMatrix;  already provided
@@ -13,6 +14,12 @@ attribute vec4 opacity;      // Unconstrained alpha value (pre-sigmoid)
 uniform vec2 u_viewport;    // Canvas resolution: vec2(window.innerWidth, window.innerHeight)
 uniform float u_size_multiplier;         // Global size multiplier for all splats
 uniform float u_opacity_multiplier;      // Global opacity multiplier for all splats
+uniform vec2 u_data_texture_dimensions; // Dimensions of the data texture (width, height)
+uniform sampler2D u_position_texture; // Texture containing splat positions
+uniform sampler2D u_color_texture;    // Texture containing splat colors
+uniform sampler2D u_scale_texture;
+uniform sampler2D u_rotation_texture;
+uniform sampler2D u_opacity_texture;
 uniform int u_debug_mode;    // Debug mode toggle (0.0 = normal, 1.0 = show scales, etc.)
 
 // --- OUTPUTS TO FRAGMENT SHADER ---
@@ -100,14 +107,44 @@ mat3 quatToMat3(vec4 q) {
 }
 
 void main() {
+
+    // RAW DATA EXTRACTION FROM TEXTURE
+    float index = order;
+    float x = mod(float(index), u_data_texture_dimensions.x);
+    float y = floor(float(index) / u_data_texture_dimensions.x);
+    vec2 data_texture_uv = vec2(x,y) + vec2(0.5, 0.5);
+    data_texture_uv /= u_data_texture_dimensions;
+    vec3 posFromText = texture2D(u_position_texture, data_texture_uv).rgb;
+    vec4 colorFromText = texture2D(u_color_texture, data_texture_uv);
+    vec3 scaleFromText = texture2D(u_scale_texture, data_texture_uv).rgb;
+    vec4 rotationFromText = texture2D(u_rotation_texture, data_texture_uv);    
+    float opacityFromText = texture2D(u_opacity_texture, data_texture_uv).r;
+    vec3 pos3Fromtext = posFromText.xyz;
+
+
+
     // 1. ACTIVATION FUNCTIONS
-    vec3 world_scale = exp(scale);
-    float alpha = 1.0 / (1.0 + exp(-opacity.x));
-    vec4 q = normalize(rotation);
+    vec3 world_scale = exp(scaleFromText);
+    float alpha = 1.0 / (1.0 + exp(-opacityFromText));
+    vec4 q = normalize(rotationFromText);
+    
+    
+
+
     
     v_opacity = alpha * u_opacity_multiplier;
     v_color = color;
+    v_color.r = 1.0;
     v_scale = world_scale;
+    v_color= colorFromText.rgb;
+    float test = u_data_texture_dimensions.x;
+    float need = 1116.0;
+    // v_color.r = posFromText.x;//step(floor(test), need);
+    // v_color.g = posFromText.y;//step(need, floor(test));
+    // v_color.b = 0.0;//max(0.0, posFromText.z);
+    //v_color.b = posFromText.z;
+    // v_color.g = posFromText.y;
+    // v_color.b = posFromText.z;
 
     // 2. CONSTRUCT 3D ROTATION MATRIX (R) FROM QUATERNION
     //mat3 R = quaternionToRotationMatrix(q);
@@ -124,7 +161,7 @@ void main() {
     //Sigma3D = computeCovariance3D(q, scale);
     
     // 4. TRANSFORM SPLAT CENTER TO CAMERA VIEW SPACE (Uses splatPosition instead of position)
-    vec4 cam_pos = modelViewMatrix * vec4(splatPosition, 1.0);
+    vec4 cam_pos = modelViewMatrix * vec4(pos3Fromtext, 1.0);
 
     // Early discard check if the splat is entirely behind the camera lens
     if (cam_pos.z >= 0.0) {
