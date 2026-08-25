@@ -8,6 +8,7 @@ export function createSplatMaterial() {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    premultipliedAlpha: true,
     vertexColors: true,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,

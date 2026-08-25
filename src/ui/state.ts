@@ -5,7 +5,7 @@ export type AppState = {
   };
   
   export const state: AppState = {
-    splatSize: 0.01,
+    splatSize: 2.0,
     opacity: 1.0,
     additive: false,
   };

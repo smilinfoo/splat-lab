@@ -7,6 +7,7 @@ import { createSplatMaterial } from "./splats/splatMaterial";
 
 import { loadBinaryPly } from "./splats/loader";
 import { createDataTextureSet, type SplatDataTextureSet } from "./splats/splatDataTextures";
+import { createSplatSorter } from "./splats/splatSorter";
 
 import { createUI } from "./ui/ui";
 import { applyState } from "./ui/bindings";
@@ -41,6 +42,13 @@ async function init() {
   const splatMesh = createSplatMesh(data, material, dataTextures);
   scene.add(splatMesh);
 
+  // Depth sorting: the sorter owns positions + draw order; main owns the buffer.
+  const orderAttr = splatMesh.geometry.getAttribute("order");
+  const sorter = createSplatSorter(
+    Float32Array.from(data.positions),
+    Uint32Array.from(data.order),
+  );
+
   window.addEventListener("keydown", (e) => {
     if (e.key >= "0" && e.key <= "5") {
       material.uniforms.u_debug_mode.value = Number(e.key);
@@ -56,6 +64,16 @@ async function init() {
 
   function animate() {
     requestAnimationFrame(animate);
+
+    // 1. Make the view matrix current, 2. set transform, 3. sort,
+    // 4. update the index buffer. The sorter never touches the buffer or renderer.
+    camera.updateMatrixWorld();
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+    sorter.setTransform(camera.matrixWorldInverse.elements);
+    const sorted = sorter.sort();
+    (orderAttr.array as Float32Array).set(sorted);
+    orderAttr.needsUpdate = true;
+
     renderer.render(scene, camera);
   }
 

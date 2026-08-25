@@ -15,17 +15,22 @@ export function createUI(onChange: () => void) {
 
   // --- Size slider
   const sizeLabel = document.createElement("div");
-  sizeLabel.innerText = "Splat Size";
+
+  const updateSizeLabel = (value: number) => {
+    sizeLabel.innerText = `Splat Size: ${value.toFixed(2)}`;
+  };
 
   const sizeInput = document.createElement("input");
   sizeInput.type = "range";
-  sizeInput.min = "0.001";
-  sizeInput.max = "2";
+  sizeInput.min = "0.1";
+  sizeInput.max = "4";
   sizeInput.step = "0.01";
   sizeInput.value = String(state.splatSize);
+  updateSizeLabel(state.splatSize);
 
   sizeInput.oninput = (e) => {
     state.splatSize = parseFloat((e.target as HTMLInputElement).value);
+    updateSizeLabel(state.splatSize);
     onChange();
   };
 

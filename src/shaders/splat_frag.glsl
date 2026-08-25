@@ -1,42 +1,22 @@
 uniform vec2 u_viewport;    // Canvas resolution: vec2(window.innerWidth, window.innerHeight)
 uniform float u_size_multiplier;         // Global size multiplier for all splats
-uniform float u_opacity_multiplier;      // Global opacity multiplier for all splats
+uniform float u_opacity_multiplier;      // Temporary UI gain; will be reimplemented
 uniform int u_debug_mode;    // Debug mode toggle (0.0 = normal, 1.0 = show scales, etc.)
 
 // --- INPUTS PASSED FROM THE VERTEX SHADER ---
-varying vec2 v_pixel_offset; // Local pixel coordinates relative to splat center
 varying float v_opacity;     // Activated global opacity (0.0 to 1.0)
 varying vec3 v_color;        // Splat RGB values
-varying vec3 v_conic;        // Symmetrical inverse 2D covariance components
 varying vec3 v_scale;        // Only used for debugging purposes
 varying vec3 v_rot_debug;
 varying vec3 v_debug_color;
 varying vec3 v_position;
 
 void main() {
-    // 1. EXTRACT INVERSE COVARIANCE PARAMETERS
-    float a = v_conic.x;
-    float b = v_conic.y;
-    float c = v_conic.z;
-
-    // 2. EVALUATE THE MULTIVARIATE GAUSSIAN EXPONENT
-    // Formula: -0.5 * (a*x^2 + 2*b*x*y + c*y^2)
-    float power = -0.5 * (a * v_pixel_offset.x * v_pixel_offset.x 
-                        + 2.0 * b * v_pixel_offset.x * v_pixel_offset.y 
-                        + c * v_pixel_offset.y * v_pixel_offset.y);
-
+    // Gaussian falloff in quad-local space. v_position = quad position * sqrt8,
+    // matching the sqrt(8 * eigenvalue) basis that sizes the quad in the vertex
+    // shader, so this is a correct elliptical Gaussian in screen space.
     float A = dot(v_position, v_position);
-
-    // 3. ALPHA OUTSIDE EVALUATION AREA
-    // Optimization: Reject pixels where influence decays past 3 standard deviations
-    if (power > 0.0) {
-        discard;
-    }
-
-    if (A > 8.0) discard;
-
-    // 4. COMBINE OPACITIES
-    float alpha = v_opacity * exp(power);
+    if (A > 8.0) discard; // clip to ~3 std devs (inscribed disc of the quad)
 
     vec3 outColor = v_color;
     outColor = step(0.0, outColor);
@@ -73,11 +53,8 @@ void main() {
 
     float opacity = exp(-0.5 * A) * v_opacity;
 
-    // 5. OUTPUT RENDER TARGET COLOUR
-    gl_FragColor = vec4(v_color * alpha, alpha); // Premultiplied Alpha output
-    gl_FragColor = vec4(v_color , 1.0); //test
-    gl_FragColor = vec4(v_color.rgb, opacity);
-    //gl_FragColor = vec4(v_debug_color, 1.0); // Premultiplied Alpha output
-    //vec3 tempColor = v_debug_color.rgb;
-    //gl_FragColor = vec4(tempColor, 1.0);
+    // 5. OUTPUT: premultiplied alpha.
+    // Material sets premultipliedAlpha: true, so Normal blend = correct "over"
+    // and Additive blend = straight add. Both need color already scaled by alpha.
+    gl_FragColor = vec4(v_color.rgb * opacity, opacity);
 }
