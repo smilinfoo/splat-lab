@@ -14,6 +14,7 @@ import { applyState } from "./ui/bindings";
 
 async function init() {
 
+  // component setup
   const renderer = createRenderer();
   document.body.appendChild(renderer.domElement);
   const scene = createScene();
@@ -22,22 +23,7 @@ async function init() {
 
   // TEMP: load sample data
   const data = await loadBinaryPly("/splats/point_cloud.ply");
-  console.log("scale sample:", data.scales.slice(0, 20));
   const dataTextures:SplatDataTextureSet  = await createDataTextureSet(data);
-
-  console.log("data texture size:", dataTextures.width, dataTextures.height);
-  console.log("data texture count:", dataTextures.count);
-  console.log(`color in MAIN`);
-  console.log(dataTextures.colors)
-
-  let min = Infinity;
-  let max = -Infinity;
-  for (let i = 0; i < data.scales.length; i++) {
-    const v = data.scales[i];
-    if (v < min) min = v;
-    if (v > max) max = v;
-  } //move to loader
-  console.log("scale range:", min, max);
 
   const splatMesh = createSplatMesh(data, material, dataTextures);
   scene.add(splatMesh);
@@ -78,7 +64,7 @@ async function init() {
   }
 
   animate();
-  console.log('init!!!')
+
 }
 
 init();
