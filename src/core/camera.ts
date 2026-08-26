@@ -11,7 +11,6 @@ export function createCamera() {
   camera.position.set(0, 0, 3);
 
   const renderer = document.querySelector("canvas");
-  console.log(renderer)
   const controls = new OrbitControls(camera, renderer);
   controls.enableDamping = true;
 
