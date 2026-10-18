@@ -57,6 +57,18 @@ export function createSplatMesh(data: any, material: THREE.ShaderMaterial, dataT
   material.uniforms.u_scale_texture.value = dataTextures.scales;
   material.uniforms.u_rotation_texture.value = dataTextures.rotations;
   material.uniforms.u_opacity_texture.value = dataTextures.opacities;
+  // Bounding sphere over the whole cloud (default is the 2x2 base quad), padded
+  // by the largest splat scale so edge splats are not culled early.
+  const box = new THREE.Box3().setFromArray(data.positions);
+  const sphere = new THREE.Sphere();
+  box.getBoundingSphere(sphere);
+  let maxScale = 0;
+  for (let i = 0; i < data.scales.length; i++) {
+    if (data.scales[i] > maxScale) maxScale = data.scales[i];
+  }
+  sphere.radius += Math.exp(maxScale); // scales are log-space
+  geometry.boundingSphere = sphere;
+
   // 5. Use THREE.Mesh instead of THREE.Points
   const mesh = new THREE.Mesh(geometry, material);
 

@@ -8,6 +8,7 @@ import { createSplatMaterial } from "./splats/splatMaterial";
 import { loadBinaryPly } from "./splats/loader";
 import { createDataTextureSet, type SplatDataTextureSet } from "./splats/splatDataTextures";
 import { createSplatSorter } from "./splats/splatSorter";
+import * as THREE from "three";
 
 import { createUI } from "./ui/ui";
 import { applyState } from "./ui/bindings";
@@ -18,7 +19,7 @@ async function init() {
   const renderer = createRenderer();
   document.body.appendChild(renderer.domElement);
   const scene = createScene();
-  const camera = createCamera();
+  const { camera, controls } = createCamera();
   const material = createSplatMaterial();
 
   // TEMP: load sample data
@@ -26,7 +27,14 @@ async function init() {
   const dataTextures:SplatDataTextureSet  = await createDataTextureSet(data);
 
   const splatMesh = createSplatMesh(data, material, dataTextures);
+  // Hard-coded splat offset transform within the scene.
+  splatMesh.position.set(0, 0, -0);
+  splatMesh.rotation.set(2.3, 0, 0);
   scene.add(splatMesh);
+  // Orbit around the splat, not the world origin.
+  controls.target.copy(splatMesh.position);
+  controls.update();
+  const modelView = new THREE.Matrix4(); // reused each frame
 
   // Depth sorting: the sorter owns positions + draw order; main owns the buffer.
   const orderAttr = splatMesh.geometry.getAttribute("order");
@@ -34,12 +42,6 @@ async function init() {
     Float32Array.from(data.positions),
     Uint32Array.from(data.order),
   );
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key >= "0" && e.key <= "5") {
-      material.uniforms.u_debug_mode.value = Number(e.key);
-    }
-  });
 
   const onChange = () => {
     applyState(material);
@@ -51,11 +53,13 @@ async function init() {
   function animate() {
     requestAnimationFrame(animate);
 
-    // 1. Make the view matrix current, 2. set transform, 3. sort,
+    // 1. Make the model-view matrix current, 2. set transform, 3. sort,
     // 4. update the index buffer. The sorter never touches the buffer or renderer.
     camera.updateMatrixWorld();
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-    sorter.setTransform(camera.matrixWorldInverse.elements);
+    splatMesh.updateMatrixWorld();
+    modelView.multiplyMatrices(camera.matrixWorldInverse, splatMesh.matrixWorld);
+    sorter.setTransform(modelView.elements);
     const sorted = sorter.sort();
     (orderAttr.array as Float32Array).set(sorted);
     orderAttr.needsUpdate = true;

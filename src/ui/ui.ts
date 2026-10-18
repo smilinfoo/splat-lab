@@ -59,6 +59,37 @@ export function createUI(onChange: () => void) {
     onChange();
   };
 
+  // --- Debug / view mode dropdown (one-way: UI -> state; value is the u_debug_mode index)
+  const modeLabel = document.createElement("div");
+  modeLabel.innerText = "View Mode";
+
+  const modeSelect = document.createElement("select");
+  const modes: [number, string][] = [
+    [0, "Plain"],
+    [1, "Opaque color"],
+    [2, "Scale"],
+    [3, "Rotation (broken)"],
+    [4, "R (stub)"],
+    [5, "Opacity"],
+  ];
+  for (const [value, label] of modes) {
+    const option = document.createElement("option");
+    option.value = String(value);
+    option.innerText = label;
+    modeSelect.appendChild(option);
+  }
+  modeSelect.value = String(state.debugMode);
+
+  modeSelect.onchange = (e) => {
+    state.debugMode = parseInt((e.target as HTMLSelectElement).value, 10);
+    onChange();
+  };
+
+  root.appendChild(modeLabel);
+  root.appendChild(modeSelect);
+  root.appendChild(document.createElement("br"));
+  root.appendChild(document.createElement("br"));
+
   root.appendChild(sizeLabel);
   root.appendChild(sizeInput);
   root.appendChild(document.createElement("br"));

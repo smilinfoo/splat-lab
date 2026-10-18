@@ -5,7 +5,7 @@ Canonical project overview. Agent rules live in `.cursor/rules/`. Architecture m
 ## Purpose
 
 - Experimental 3D Gaussian splat viewer / test bed. Not for production.
-- Pipeline steps (load, pack, sort, draw) should stay easy to swap so efficiency experiments are cheap.
+- **Primary goal: swap and compare.** Every pipeline step (load, pack, sort, draw) must be independently replaceable so alternative implementations can be benchmarked against each other, e.g. swapping the sort module to compare speed, or swapping the render/GLSL path to test batching. This outranks consolidation and micro-optimization.
 - Distinct steps with clean interfaces are favoured over packing work together.
 
 ## Current State
@@ -13,10 +13,10 @@ Canonical project overview. Agent rules live in `.cursor/rules/`. Architecture m
 - A Vite + TypeScript + Three.js app loads `public/splats/point_cloud.ply` (Git LFS), uploads splat data to the GPU, and draws each splat as a camera-facing quad with custom GLSL.
 - Data reaches the GPU as instanced attributes, uniforms, **and** float `DataTexture`s. The live vertex shader samples the textures and uses `order` plus the base quad `position`. Instanced `splatPosition` / `scale` / `rotation` / `opacity` are uploaded but not used for the live path. `color` is read once, then overwritten from the texture.
 - The scene renders, but shader math is still incorrect (see Current Problems).
-- Depth sorting is implemented in `splats/splatSorter.ts` (pure module). Each frame `main.ts` sets the view transform, calls `sort()`, and copies the returned indices into the `order` attribute. `order` is no longer identity.
-- Overlay UI: splat size, opacity, additive/normal blending. Keyboard `0`–`5` sets `u_debug_mode` (bypasses UI state). The size slider scales the splat footprint (`u_size_multiplier`, `1.0` = natural size).
+- Depth sorting is implemented in `splats/splatSorter.ts` (pure module). Each frame `main.ts` sets the model-view transform (`camera.matrixWorldInverse * splatMesh.matrixWorld`), calls `sort()`, and copies the returned indices into the `order` attribute. `order` is no longer identity.
+- Overlay UI: splat size, opacity, additive/normal blending. A "View Mode" dropdown (`state.debugMode` → `u_debug_mode`; Plain, Opaque color, Scale, Rotation, R, Opacity; one-way UI → state) selects the debug view. The old `0`–`5` key listeners were removed. The size slider scales the splat footprint (`u_size_multiplier`, `1.0` = natural size).
 - Live path: `createSplatMesh` + data textures + `src/shaders/*.glsl`. `splatMeshOLD.ts` / `splatMaterial_OLD.ts` are an earlier `THREE.Points` prototype.
-- There is no explainer step system. Debug keys are not that system. PlayCanvas and Inria v2 PLY variants are not detected.
+- The splat mesh has a hard-coded position/rotation set in `main.ts` (test-scene values; temporary). The mesh transform feeds both the shader (`modelViewMatrix`) and the sorter. There is no explainer step system. The debug dropdown is not that system. PlayCanvas and Inria v2 PLY variants are not detected.
 
 ## Important Concepts
 
@@ -40,14 +40,14 @@ After a correct basic example: workers for sorting, octrees, LOD. Do not add tho
 Startup (once), composed in `src/main.ts`:
 
 1. `createRenderer()` → append canvas
-2. `createScene()` → `createCamera()` (OrbitControls via `document.querySelector("canvas")`)
+2. `createScene()` → `createCamera()` (returns `{ camera, controls }`; OrbitControls via `document.querySelector("canvas")`). After the mesh is added, `main.ts` sets `controls.target` to the mesh position and calls `controls.update()` once
 3. `createSplatMaterial()`
 4. `loadBinaryPly("/splats/point_cloud.ply")` → `SplatData` typed arrays
 5. `createDataTextureSet(data)` → float data textures
 6. `createSplatMesh(data, material, textures)` → `scene.add(mesh)`
 7. `createSplatSorter(positions, order)` (owns a copy of positions + the index buffer)
 8. `createUI(onChange)` + `applyState(material)`
-9. Per frame: update view matrix → `sorter.setTransform(view.elements)` → `sorter.sort()` → copy indices into the `order` attribute → `renderer.render(scene, camera)` (does not call `controls.update()`)
+9. Per frame: update model-view matrix → `sorter.setTransform(modelView.elements)` → `sorter.sort()` → copy indices into the `order` attribute → `renderer.render(scene, camera)` (does not call `controls.update()`)
 
 CPU decode (`loader.ts`):
 
@@ -77,9 +77,9 @@ UI: slider/button → `src/ui/state.ts` → `applyState(material)` → `u_size_m
 
 ## Debug modes (`u_debug_mode`)
 
-| Key | Intended | Live shader |
+| Mode | Intended | Live shader |
 |---|---|---|
-| 0 | Normal | Disc-based color/alpha (default) |
+| 0 | Normal ("Plain" in the dropdown) | Disc-based color/alpha (default) |
 | 1 | No gradient / opaque color | Opaque color (`step` on RGB) |
 | 2 | Scale | `clamp(v_scale * 220, 0, 1)` |
 | 3 | Rotation | `v_rot_debug` — **never written** |
@@ -104,9 +104,9 @@ UI: slider/button → `src/ui/state.ts` → `applyState(material)` → `u_size_m
 - `u_size_multiplier` now scales the live footprint. `state.splatSize` defaults to `1.0` (natural size); slider range `0.1`–`4`.
 - Resize updates the renderer only — not camera `aspect` or `u_viewport`.
 - `createCamera()` finds the canvas with `document.querySelector("canvas")` instead of `renderer.domElement`.
-- `OrbitControls.enableDamping = true` but the render loop never calls `controls.update()`.
+- `OrbitControls.enableDamping = true` but the render loop never calls `controls.update()`. `controls.target` is copied from the mesh position once at startup, so later mesh moves do not re-target it.
 - Material defaults to `AdditiveBlending`; `state.additive` is `false`. First `applyState` wins (`NormalBlending`).
-- Instanced geometry bounds come from the 2×2 quad, not the splat cloud. Default `frustumCulled` can hide the whole mesh when the origin leaves the frustum.
+- Instanced geometry bounds default to the 2×2 quad, so `splatMesh.ts` assigns `geometry.boundingSphere` from the splat positions, padded by `exp(max log-scale)`. A few outlier splats can inflate it (culling gets weaker, never wrong).
 - `instanceCount` is never set (Three.js infers it). `createDataTextureSet` is `async` with no async work. `opacity` attribute is item size 1 but declared `vec4`. `u_debug_mode` is created as a float and declared `int`.
 - No tests. Leftovers: `counter.ts`, leftover Vite CSS in `style.css` (still imported), `src/data/sample.json`, `*_OLD.ts`, `public/splats/test.py`. Scale min/max logging still lives in `main.ts`.
 

@@ -14,5 +14,5 @@ export function createCamera() {
   const controls = new OrbitControls(camera, renderer);
   controls.enableDamping = true;
 
-  return camera;
+  return { camera, controls };
 }

@@ -33,9 +33,9 @@ Keep rendering logic separate from application/state logic. Do not move function
 | Shaders | `src/shaders/*.glsl` | Covariance, projection, quad expansion, Gaussian/disc eval, debug |
 | Sort | `splats/splatSorter.ts` | Pure module: owns positions + index buffer; `setTransform` then `sort()` returns far→near indices. Writes nothing to the GPU |
 | App state | `ui/state.ts` + `ui.ts` + `bindings.ts` | Store / DOM writes / material apply |
-| Render loop | `main.ts` | Per frame: refresh view matrix → drive the sorter → copy indices into the `order` attribute → `renderer.render`. Owns the GPU buffer write. Does not update OrbitControls |
+| Render loop | `main.ts` | Per frame: refresh model-view matrix (`camera.matrixWorldInverse * splatMesh.matrixWorld`) → drive the sorter → copy indices into the `order` attribute → `renderer.render`. Owns the GPU buffer write. Does not update OrbitControls |
 
-`main.ts` is the only composition root. Add new steps as named functions called from there. Today it still contains loader-ish scale stats and debug key handling.
+`main.ts` is the only composition root. Add new steps as named functions called from there. Today it still contains loader-ish scale stats and the hard-coded test mesh position/rotation.
 
 ## Dependencies
 
@@ -57,10 +57,10 @@ Favour a readable list of steps over efficiency. Do not merge steps to save a pa
 ## Control flow
 
 - **Init:** renderer → append canvas → scene → camera → material → load PLY → textures → mesh → sorter → UI → animate
-- **Frame:** refresh view matrix → `sorter.setTransform` → `sorter.sort()` → write `order` attribute → render
+- **Frame:** refresh model-view matrix → `sorter.setTransform` → `sorter.sort()` → write `order` attribute → render
 - **UI:** input → `ui.ts` mutates `state` → `onChange()` → `applyState(material)`
-- **Debug keys:** `keydown` `0`–`5` sets `u_debug_mode` directly (not in `state`)
-- **Camera:** OrbitControls on the canvas after it is appended; damping is enabled but never updated
+- **Debug mode:** "View Mode" dropdown → `state.debugMode` → `applyState` → `u_debug_mode` (one-way; key listeners removed)
+- **Camera:** `createCamera()` returns `{ camera, controls }`. OrbitControls on the canvas after it is appended; `main.ts` targets the mesh position once; damping is enabled but never updated
 
 ## Not on the live path
 
@@ -78,9 +78,9 @@ Imported leftover: `src/style.css` (Vite starter CSS; `body` background is live 
 - `u_size_multiplier` scales the live footprint (eigenvector basis). `state.splatSize` defaults to `1.0`.
 - `opacity` attribute is item size 1 but declared `vec4` in the vertex shader.
 - `createDataTextureSet` is `async` but has no async work.
-- Sorting runs every frame (comparison sort) and rewrites the `order` attribute; the sorter must stay pure (no THREE/geometry/renderer). Assumes the mesh transform is identity — if the mesh gets a transform, pass `mesh.modelViewMatrix.elements` instead of the view matrix.
+- Sorting runs every frame (comparison sort) and rewrites the `order` attribute; the sorter must stay pure (no THREE/geometry/renderer). `main.ts` passes the model-view matrix (view × `splatMesh.matrixWorld`), so a mesh transform is honored; keep it that way.
 - Additive vs normal blending look very different. Material default is additive; UI state default is normal (first `applyState` wins).
-- Instanced mesh `frustumCulled` uses the 2×2 quad bounds, not the splat cloud.
+- Culling uses `geometry.boundingSphere`, set in `splatMesh.ts` from the splat positions (padded by the largest splat scale), not the default 2×2 quad bounds.
 - README format notes (PlayCanvas / Inria v2) are not implemented; do not assume the loader is format-generic.
 - Header parser is not scoped to `element vertex`; extra `property` lines from other elements would be included.
 
