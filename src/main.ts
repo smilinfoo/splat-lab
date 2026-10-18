@@ -23,13 +23,13 @@ async function init() {
   const material = createSplatMaterial();
 
   // TEMP: load sample data
-  const data = await loadBinaryPly("/splats/point_cloud.ply");
+  const data = await loadBinaryPly("/splats/dinning.ply");
   const dataTextures:SplatDataTextureSet  = await createDataTextureSet(data);
 
   const splatMesh = createSplatMesh(data, material, dataTextures);
   // Hard-coded splat offset transform within the scene.
-  splatMesh.position.set(0, 0, -0);
-  splatMesh.rotation.set(2.3, 0, 0);
+  splatMesh.position.set(0, -4, 6);
+  splatMesh.rotation.set(0.5, 0, 3.14);
   scene.add(splatMesh);
   // Orbit around the splat, not the world origin.
   controls.target.copy(splatMesh.position);
